@@ -93,7 +93,42 @@ def transferencias(con, paga: str, publicos: set, ibge: list[dict]) -> dict:
     }
 
 
-def gerar(con: sqlite3.Connection, vault: Path) -> dict:
+FONTE_FLUXO = "Motor de fluxo do JFN (PostgreSQL, esquema fluxo)"
+
+
+def sistema(con_pg=None) -> dict:
+    """Números do MOTOR para a aba Sistema (27/11/2026): jobs concluídos e com falha em 24 h, fila do OCR, saúde
+    honesta (planejador.saude: o pior estado vence), máquinas vivas e estágios liberados. Sem PG = INDISPONÍVEL
+    (nunca zero)."""
+    if con_pg is None:
+        try:
+            from compliance_agent.fluxo import fila
+            con_pg = fila.conectar()
+        except (OSError, RuntimeError, ValueError, ImportError) as e:
+            return {"estado": "INDISPONIVEL", "motivo": f"PG do fluxo inacessível ({type(e).__name__})"}
+    from compliance_agent.fluxo import grafo as G
+    from compliance_agent.fluxo import planejador
+    g = G.carregar()
+    feitos, falhas = con_pg.execute(
+        "SELECT count(*) FILTER (WHERE estado = 'feito'), count(*) FILTER (WHERE estado IN ('quarentena', "
+        "'falhou_efeito')) FROM jobs WHERE concluido_em > now() - interval '24 hours'").fetchone()
+    fila_ocr = con_pg.execute("SELECT count(*) FROM jobs WHERE tipo = 'ocr' AND estado IN ('fila', 'reservado')"
+                              ).fetchone()[0]
+    nos = [n for (n,) in con_pg.execute("SELECT no FROM nos WHERE heartbeat_em > now() - interval '5 minutes' "
+                                        "ORDER BY no")]
+    lib = con_pg.execute("SELECT count(DISTINCT estagio) FROM liberacao").fetchone()[0]
+    sd = planejador.saude(con_pg, tuple(g.nos), g.grafo_planejador(), g.terminais(), g.dividas())
+    nomes = {"vm1": "VM-1", "vm2": "VM-2", "itcampo": "it-campo"}
+    return {"estado": "VERIFICADO", "fonte": FONTE_FLUXO,
+            "jobs_24h": _n(int(feitos), FONTE_FLUXO, "jobs concluídos com efeito conferido nas últimas 24 h"),
+            "falhas_24h": _n(int(falhas), FONTE_FLUXO, "quarentena ou efeito não conferido nas últimas 24 h"),
+            "fila_ocr": _n(int(fila_ocr), FONTE_FLUXO, "páginas escaneadas na fila do OCR (E5)"),
+            "saude": _n(sd.get("estado"), FONTE_FLUXO, "; ".join(sd.get("motivos") or [])[:300] or "sem motivo"),
+            "nos_vivos": _n([nomes.get(n, n) for n in nos], FONTE_FLUXO, "heartbeat nos últimos 5 min"),
+            "estagios_liberados": _n(int(lib), FONTE_FLUXO, "estágios E1–E18 liberados na religação")}
+
+
+def gerar(con: sqlite3.Connection, vault: Path, sistema_fn=None) -> dict:
     paga = _ob_paga(con)
     # ente público NÃO é fornecedor (regra da casa): nome (entidades_gov.eh_nao_fornecedor — fundos, prefeituras, AAE,
     # tributos) OU natureza jurídica 1xxx da Receita (orgao_esfera). 27/11: sem isso o «maior fornecedor» do Fundo
@@ -129,6 +164,7 @@ def gerar(con: sqlite3.Connection, vault: Path) -> dict:
     ibge_idx = [{**m, "nome": m["nome"]} for m in ibge]
     trans = transferencias(con, paga, publicos, [{**m, "nome": m["chave"], "nome_oficial": m["nome"]} for m in ibge_idx])
     return {
+        "sistema": (sistema_fn or sistema)(),
         "transferencias": trans,
         "gerado_em": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "inicio": {

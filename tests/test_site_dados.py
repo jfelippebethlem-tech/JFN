@@ -22,7 +22,7 @@ def _con():
 
 def test_so_fornecedor_privado_entra(tmp_path, monkeypatch):
     monkeypatch.setattr(S.ug_nomes, "subordinacao", lambda u, a: "FUNDACAO SAUDE")
-    d = S.gerar(_con(), tmp_path)
+    d = S.gerar(_con(), tmp_path, sistema_fn=dict)
     assert d["inicio"]["pago_fornecedores"]["valor"] == 1000.0                  # só a empresa privada
     assert d["inicio"]["fora_por_ser_ente_publico"]["valor"] == 17000.0         # fundo (nome) + consórcio (natureza 1xxx)
     assert [f["nome"] for f in d["orgao"]["fornecedores"]] == ["EMPRESA REAL LTDA"]
@@ -37,7 +37,7 @@ def test_repasse_a_municipio_casa_com_ibge_e_fora_do_rj_fica_listado(tmp_path, m
                 "'44.555.666/0001-81','Fundo Municipal De Saude De Duque De Caxias',500.0,2026)")
     con.execute("INSERT INTO ob_orcamentaria_siafe VALUES ('7','296100','01/11/2026','Contabilizado','','',"
                 "'55.666.777/0001-81','FUNDO MUN. DE SAUDE DE S. PEDRO DA ALDEIA',300.0,2026)")
-    t = S.gerar(con, tmp_path)["transferencias"]
+    t = S.gerar(con, tmp_path, sistema_fn=dict)["transferencias"]
     nomes = {m["nome_oficial"]: m["valor"] for m in t["por_municipio"]}
     assert nomes["Duque de Caxias"] == 500.0 and nomes["São Pedro da Aldeia"] == 300.0     # abreviação «S.» expandida
     assert "X" in t["municipios_sem_casar"]                                                  # o «fundo de X» não some
@@ -45,7 +45,7 @@ def test_repasse_a_municipio_casa_com_ibge_e_fora_do_rj_fica_listado(tmp_path, m
 
 def test_contagem_de_ob_da_base_e_do_ultimo_dia(tmp_path, monkeypatch):
     monkeypatch.setattr(S.ug_nomes, "subordinacao", lambda u, a: "FUNDACAO SAUDE")
-    i = S.gerar(_con(), tmp_path)["inicio"]
+    i = S.gerar(_con(), tmp_path, sistema_fn=dict)["inicio"]
     assert i["ob_pagas_na_base"]["valor"] == 5 and i["ob_no_ultimo_dia"]["valor"] == 1      # só a de 26/11
 
 
@@ -74,3 +74,11 @@ def test_espelho_que_falha_falha_a_rotina_sem_marca(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path); (tmp_path / "data").mkdir(); (tmp_path / "pub").mkdir()
     assert S.main(["x", str(tmp_path / "pub" / "dados.json")]) == 1
     assert not (tmp_path / "data" / "site_dados_marca.json").exists()       # site velho nunca passa como «ok»
+
+
+def test_sistema_sem_pg_e_indisponivel_nunca_zero(monkeypatch):
+    from compliance_agent.fluxo import fila
+    def falha():
+        raise OSError("sem PG")
+    monkeypatch.setattr(fila, "conectar", falha)
+    assert S.sistema()["estado"] == "INDISPONIVEL"
