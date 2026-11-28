@@ -2320,6 +2320,18 @@ rotinas:
       agrupar: true
     origem: [vm1-deriv-territorio]
     nos: [vm1]
+  crc_pares_sei_rj:
+    estagio: E2
+    descricao: 'Pares código verificador + CRC do rodapé dos documentos do acervo SEI do Estado que apontam para OUTRO processo (O3.8 rota d): carga no crc_par do PG, de onde o E2/E3 pela via pública baixa o ORIGINAL pela Conferência de Autenticidade (sei/conferencia_autenticidade).'
+    comando: ['{py}', -m, tools.sei_rj_crc_pares, --pg]
+    timeout_s: 3600
+    recursos: [cpu_pesado]
+    efeito: {descricao: 'pares colhidos e carregados no PG (linha do resumo)', arquivo: data/sei_rj_crc_pares.json, log_contem: 'crc_par no PG com [0-9]+ par'}
+    prioridade: 75
+    agenda:
+    - {cron: 50 2 * * *}
+    nota: 'varre o acervo SEI da VM-1 (disco, > 10 min): noturna, cpu_pesado'
+    nos: [vm1]
   licitacao_relacionada:
     estagio: E2
     descricao: 'Contrato → processo da LICITAÇÃO (regra única #53 do mapa O1.2, ex-bombeiros_achar_edital; auditoria 27/11): nº SEI citado no MESMO documento que fala de pregão/edital/concorrência/tomada de preços, menos o próprio, vai a data/sei_fila_licitacao.json — fonte de nº do semeador do E2 (a ordem é a da prioridade única).'
