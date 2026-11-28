@@ -302,7 +302,10 @@ def normalizar_texto(bruto: str, titulo: str) -> tuple[str, str, int]:
     caracteres do início a normalização tirou — o rótulo depende do TÍTULO, e é por eles que outro documento com o
     MESMO texto de saída prova ter o mesmo texto normalizado sem abrir o arquivo (`corte_de`)."""
     from compliance_agent.sei.acervo_texto import sem_etiqueta
-    u = bruto.replace("\r\n", "\n").replace("\r", "\n")
+    # 27/11/2026: byte NUL (0x00, lixo de extração) não é texto e o PostgreSQL o recusa em campo text — 2 jobs do E8
+    # quebravam ao gravar `docs_lidos.cabeca` (e a citação o levaria aos `fatos`). Sai aqui: leitura e conferência
+    # normalizam igual, então os offsets das citações seguem coerentes.
+    u = bruto.replace("\x00", "").replace("\r\n", "\n").replace("\r", "\n")
     sem = sem_etiqueta(u, str(titulo or ""))
     return sem.strip(), u[:CABECA], len(u) - len(sem.lstrip())
 

@@ -320,3 +320,9 @@ def test_schema_evolui_tabela_antiga_sem_renomear(pg):
     cols = {r[0] for r in con.execute("SELECT column_name FROM information_schema.columns WHERE table_name='fatos' "
                                       "AND table_schema=%s", (nome,))}
     assert {"payload_sha", "citacao", "estado", "doc_sha", "pagina", "inicio", "fim", "chave"} <= cols
+
+
+def test_normalizar_tira_byte_nul_que_o_postgresql_recusa():
+    """27/11/2026: 2 jobs do E8 quebravam com «PostgreSQL text fields cannot contain NUL (0x00) bytes»."""
+    t, cabeca, corte = F.normalizar_texto("[Despacho (1)]\nDe\x00spacho do fiscal\x00", "Despacho (1)")
+    assert "\x00" not in t and "\x00" not in cabeca and t == "Despacho do fiscal"
