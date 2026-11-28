@@ -31,6 +31,7 @@ TETOS_TAREFA = {
     "juiz_qualidade": 12,        # juiz subjetivo das regras de qualidade (só assinatura; amostra por valor/risco)
     "conferencia_opus": 240,     # 60→240 em 21/11/2026 (4.747 na fila, entram ~590/dia); Opus relê o que os outros modelos produziram em contingência (llm/conferencia_opus)
     "pericia_integral": 200,     # 15/11/2026: perícia integral por processo (Opus, todos os eixos numa chamada)
+    "extracao_sei": 100,         # 27/11/2026: vínculo OB×contrato pela ASSINATURA (dono: nada de gasto novo; era lote pago)
     "conferencia_e12": 60,       # 27/11/2026: E12 nativo (Opus) caía no padrão de 10/dia por nó; 60 = a capacidade medida
                                  # da conferência (plano §17: entrada ≤ ~60/dia) — o ritmo semanal segura o total
     "leitura_integral": 400,     # 27/11/2026: E8 (fatos, Haiku) caía no padrão de 10/dia por nó e a etapa 2 da religação

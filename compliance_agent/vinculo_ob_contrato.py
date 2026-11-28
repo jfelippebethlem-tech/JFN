@@ -438,9 +438,39 @@ def decidir_modelo(saida: dict, contexto: dict) -> dict:
     return out
 
 
+MODELO_ASSINATURA = "claude-haiku-5-5"
+PROMPT_VERSION_ASSINATURA = "vinculo-modelo-assinatura-1"
+
+
+def ler_pela_assinatura(itens: list, chamar=None) -> dict:
+    """As MESMAS duas leituras por par, pela ASSINATURA (camada 2 do gateway) — dono 27/11/2026: «só autorizo se tiver
+    crédito que venha da assinatura; nada de gasto novo». Devolve {custom_id: texto} como o lote; para na primeira
+    recusa da assinatura (cota/ritmo/teto): o que faltou fica sem leitura e o par sai INDISPONÍVEL, relido amanhã."""
+    from compliance_agent.adaptadores.llm import gateway as G
+    chamar = chamar or G.chamar
+    saida = {}
+    for cid, texto in itens:
+        try:
+            r = chamar(TAREFA, [{"role": "system", "content": SISTEMA}, {"role": "user", "content": texto}],
+                       prompt_version=PROMPT_VERSION_ASSINATURA, modelo_pref=MODELO_ASSINATURA, classe_dado="interno",
+                       max_tokens=MAX_TOKENS, timeout=300, so_camadas=[2])
+        except (G.SemProvedor, G.OrcamentoEsgotado, G.CamadaForaDaPolitica) as e:
+            logger.warning("assinatura parou em %s: %s", cid, str(e)[:200])
+            break
+        saida[cid] = r.texto
+    return saida
+
+
 def rodar_modelo(pares: dict, *, modelo: str | None = None, espera_max: int = 3600) -> tuple[dict, dict]:
-    from compliance_agent.llm import claude_api as C
+    import os
     itens, contexto = montar_itens(pares)
+    if os.environ.get("JFN_VINCULO_VIA", "assinatura") != "lote":     # padrão: assinatura (sem gasto novo)
+        saida = ler_pela_assinatura(itens)
+        feitos = {cid[:-1] for cid in saida}
+        contexto = {pid: v for pid, v in contexto.items() if pid in feitos}   # par sem as 2 leituras: amanhã
+        return decidir_modelo(saida, contexto), {"via": "assinatura", "leituras": len(saida),
+                                                 "pares_lidos": len(contexto)}
+    from compliance_agent.llm import claude_api as C
     lote = C.enviar_lote(TAREFA, itens, sistema=SISTEMA, modelo=modelo, max_tokens=MAX_TOKENS, effort="low",
                          formato=FORMATO, n_decisoes=len(pares))
     if not lote:
@@ -749,8 +779,9 @@ def main(argv: list[str] | None = None) -> int:
             alvo[par] = sorted(set(outros) | {k})
             gab[par] = k
     decisoes, meta = rodar_modelo(alvo)
-    acertos = sum(1 for par, k in gab.items() if decisoes[par][0] == k and decisoes[par][2] == V.VERIFICADO)
-    erros = sum(1 for par, k in gab.items() if decisoes[par][0] not in (None, k))
+    sem = (None, "", V.INDISPONIVEL, "não lido nesta rodada")            # assinatura parou antes do par
+    acertos = sum(1 for par, k in gab.items() if decisoes.get(par, sem)[0] == k and decisoes.get(par, sem)[2] == V.VERIFICADO)
+    erros = sum(1 for par, k in gab.items() if decisoes.get(par, sem)[0] not in (None, k))
     novas = []
     for par, (k, cit, estado, motivo) in decisoes.items():
         if par in gab:
