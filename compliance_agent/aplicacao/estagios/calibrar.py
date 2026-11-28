@@ -353,7 +353,10 @@ def gravar_registro(resultados: list[dict], arq: Path, hoje: date) -> list[str]:
 
 # ── contrato do estágio ─────────────────────────────────────────────────────────────────────────────────────
 def _fonte(payload: dict) -> str:
-    f = payload.get("fonte") or os.environ.get(ENV_FONTE)
+    # 27/11/2026 (religação, E13 BLOQUEADO): sem fonte no payload nem no env, a cópia do compliance.db deste nó
+    # (fluxo.fonte_coleta — a mesma regra do E9); o recurso `fonte_coleta` só deixa reservar onde ela existe
+    from compliance_agent.fluxo import fonte_coleta
+    f = payload.get("fonte") or os.environ.get(ENV_FONTE) or str(fonte_coleta.caminho())
     if not f or not Path(f).is_file():
         raise ErroPermanente(f"calibrar: fonte de conferidos inexistente ({f!r}; use --fonte ou {ENV_FONTE})")
     return f
@@ -434,7 +437,7 @@ def _efeito(payload: dict, ctx: Contexto, resultado: Resultado) -> bool:
     return True
 
 
-ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve"], prioridade=70)
+ESTAGIO = Estagio(handler=_handler, efeito=_efeito, recursos=["cpu_leve", "fonte_coleta"], prioridade=70)
 
 
 # ── CLI ─────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -211,7 +211,7 @@ estagios:
   E13:
     tipo: calibrar
     nome: Calibrar detector
-    recursos: [cpu_leve]
+    recursos: [cpu_leve, fonte_coleta]           # 27/11: lê os conferidos da cópia do compliance.db do nó
     nos: [vm2]
     volta:
       nos: [vm1]
