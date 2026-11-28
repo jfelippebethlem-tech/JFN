@@ -164,6 +164,11 @@ class Filho:
     unidade: str | None = None                  # escopo systemd nomeado (morto inteiro ao encerrar)
 
 
+# 27/11/2026 (dono: «use todo o poder de todas as máquinas»): leituras da assinatura simultâneas POR NÓ. As VMs
+# (2 vCPU) seguem com 1; o it-campo vai a 4 (= slot `llm` dele). O total da conta segue no teto `assinatura_claude`.
+VAGAS_CLAUDE = {"itcampo": 4}
+
+
 @dataclass
 class Supervisor:
     no: str
@@ -211,6 +216,9 @@ class Supervisor:
         self.dividas = dict(self.dividas or {})
         self.nos_esperados = tuple(self.nos_esperados or ())
         self.ritmos = set(self.ritmos or ())
+        # vagas do `claude` neste nó: o env vale para os filhos (claude_motor.vagas_claude lê o mesmo número)
+        self.vagas_claude = max(1, int(os.environ.get("JFN_CLAUDE_VAGAS") or VAGAS_CLAUDE.get(self.no, 1)))
+        os.environ["JFN_CLAUDE_VAGAS"] = str(self.vagas_claude)
         if self.isolamento == "auto":
             self.isolamento = "systemd" if systemd_disponivel() else "subprocesso"
         self.restritos = dict(self.restritos or {})
@@ -424,7 +432,8 @@ class Supervisor:
         (flock em data/claude_motor.lock, espera 90 s). Um 2º job de LLM no mesmo nó esperava a trava, desistia
         ("ocupado"), adiava e RELIA o texto ao voltar — passada r3 de 25/11: 36% de leitura repetida no E8/E11.
         Com um rodando aqui, todas as tarefas de ritmo ficam fora desta reserva (outro nó pode pegá-las)."""
-        if any((f.job.payload or {}).get("ritmo") for f in self.filhos):
+        # 27/11/2026: N vagas por nó (VAGAS_CLAUDE) — o it-campo (24 fios) roda 4 leituras; as VMs de 2 vCPU, 1
+        if sum(1 for f in self.filhos if (f.job.payload or {}).get("ritmo")) >= self.vagas_claude:
             return sorted(set(bloqueados) | set(self.ritmos))
         return bloqueados
 

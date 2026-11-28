@@ -88,6 +88,15 @@ def _trava_arq() -> Path:
     return arq.dados() / "claude_motor.lock"
 
 
+def vagas_claude() -> int:
+    """Quantos `claude` do JFN ao mesmo tempo NESTA máquina (`JFN_CLAUDE_VAGAS`, que o supervisor do fluxo define pelo
+    nó — fluxo/supervisor.VAGAS_CLAUDE). Ausente/ilegível = 1 (a trava de sempre)."""
+    try:
+        return max(1, int(os.environ.get("JFN_CLAUDE_VAGAS") or 1))
+    except ValueError:
+        return 1
+
+
 def _pausa_arq() -> Path:
     return arq.dados() / ".pause_claude_motor"
 
@@ -323,7 +332,7 @@ def _pensar_cli(tarefa: str, prompt: str, *, schema=None, modelo: str = MODELO_V
         if m:
             _falhar(tarefa, m, contar_erro=False)
             return None
-        with arq.trava(_trava_arq(), espera) as pegou:
+        with arq.trava_vaga(_trava_arq(), vagas_claude(), espera) as pegou:
             if not pegou:
                 _falhar(tarefa, f"ocupado: outro claude do JFN rodando há mais de {espera:.0f} s", contar_erro=False)
                 return None

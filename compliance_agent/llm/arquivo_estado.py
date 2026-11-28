@@ -57,6 +57,38 @@ def trava(caminho: Path, espera: float | None):
         os.close(fd)
 
 
+@contextmanager
+def trava_vaga(caminho: Path, vagas: int, espera: float | None):
+    """Trava de ARQUIVO com `vagas` lugares (`caminho`, `caminho.1`, …): rende True se pegou UM dentro de `espera` s.
+    27/11/2026: o `claude` por vez valia nas VMs de 2 vCPU e prendia o it-campo (24 fios) a 1 leitura. vagas=1 é a
+    trava de sempre (o mesmo arquivo)."""
+    vagas = max(1, int(vagas or 1))
+    caminho.parent.mkdir(parents=True, exist_ok=True)
+    arqs = [caminho] + [caminho.with_name(f"{caminho.name}.{i}") for i in range(1, vagas)]
+    fds = [os.open(a, os.O_RDWR | os.O_CREAT, 0o600) for a in arqs]
+    preso = None
+    try:
+        limite = None if espera is None else time.monotonic() + max(0.0, espera)
+        while preso is None:
+            for fd in fds:
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    preso = fd
+                    break
+                except BlockingIOError:
+                    continue
+            if preso is None:
+                if limite is not None and time.monotonic() >= limite:
+                    break
+                time.sleep(0.5)
+        yield preso is not None
+    finally:
+        if preso is not None:
+            fcntl.flock(preso, fcntl.LOCK_UN)
+        for fd in fds:
+            os.close(fd)
+
+
 def ler_json(caminho: Path) -> dict:
     """O objeto do arquivo; ausente, ilegível ou não-objeto ⇒ {}."""
     try:
